@@ -3,16 +3,13 @@ import * as trash from 'trash';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as util from 'util';
-import * as npmRunPath from 'npm-run-path';
-import * as os from 'os';
 import * as mv from 'mv';
-import * as clone from 'lodash.clone';
+import * as _ from 'lodash';
 import * as mkdirp from 'mkdirp';
 import * as pathExists from 'path-exists';
-import camelCase from 'camelCase';
+import * as arrayMove from 'array-move';
 import storage from '../../storage';
-import * as adapter from '../../adapter';
-import { IProject, IMaterialScaffold } from '../../../interface';
+import { IProject, IMaterialScaffold, IPanel, IBaseModule, II18n } from '../../../interface';
 import getTarballURLByMaterielSource from '../../getTarballURLByMaterielSource';
 import downloadAndExtractPackage from '../../downloadAndExtractPackage';
 
@@ -24,81 +21,182 @@ const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 const mvAsync = util.promisify(mv);
 
-const isWin = os.type() === 'Windows_NT';
-
-// const settings = require('./services/settings');
-// settings.get('registry')
-const registry = 'https://registry.npm.taobao.org';
-
 const packageJSONFilename = 'package.json';
 const abcJSONFilename = 'abc.json';
-
+const DEFAULT_TYPE = 'react';
+const DEFAULT_ADAPTER = [
+  'adapter-react-v1',
+  'adapter-react-v2',
+  'adapter-react-v3',
+  'adapter-vue-v1'
+];
 
 class Project implements IProject {
   public readonly name: string;
 
   public readonly path: string;
 
-  public panels: string[] = [];
+  public readonly packagePath: string;
+
+  public readonly type: string;
+
+  public panels: IPanel[] = [];
+
+  public adapter: {[name: string]: IBaseModule} = {};
+
+  public adapterName: string;
 
   constructor(folderPath: string) {
     this.name = path.basename(folderPath);
     this.path = folderPath;
+    this.packagePath = path.join(this.path, packageJSONFilename);
+    this.type = this.getType();
+  }
 
-    this.loadAdapter();
+  public getType(): string {
+    const { iceworks = {} } = this.getPackageJSON();
+    const { type = DEFAULT_TYPE } = iceworks;
+    return type;
   }
 
   public getPackageJSON() {
-    const pakcagePath = path.join(this.path, packageJSONFilename);
-    return JSON.parse(fs.readFileSync(pakcagePath).toString());
+    return JSON.parse(fs.readFileSync(this.packagePath).toString());
+  }
+
+  public setPackageJSON(content) {
+    return fs.writeFileSync(this.packagePath, `${JSON.stringify(content, null, 2)}\n`, 'utf-8');
   }
 
   public getEnv() {
-    // https://github.com/sindresorhus/npm-run-path
-    // Returns the augmented process.env object.
-    const npmEnv = npmRunPath.env();
-
-    // Merge process.env、npmEnv and custom environment variables
-    const env = Object.assign({}, process.env, npmEnv, {
-      // eslint-disable-next-line
-      npm_config_registry: registry,
-      // eslint-disable-next-line
-      yarn_registry: registry,
-      CLICOLOR: 1,
-      FORCE_COLOR: 1,
-      COLORTERM: 'truecolor',
-      TERM: 'xterm-256color',
-      ICEWORKS_IPC: 'yes',
-    });
-
-    const pathEnv = [process.env.PATH, npmEnv.PATH].filter(
-      (p) => !!p
-    );
-
-    if (isWin) {
-      // do something
-    } else {
-      pathEnv.push('/usr/local/bin');
-      env.PATH = pathEnv.join(path.delimiter);
-    }
-
-    return env;
+    return process.env;
   }
 
-  private loadAdapter() {
-    const adapterModuleKeys = Object.keys(adapter);
-    for (const [key, Module] of Object.entries(adapter)) {
-      this.panels.push(key);
-
-      let project: IProject = clone(this);
-      for (const moduleKey of adapterModuleKeys) {
-        if (project[moduleKey]) {
-          delete project[moduleKey];
-        }
-      }
-
-      this[camelCase(key)] = new Module(project);
+  private interopRequire(id) {
+    let mod;
+    try {
+      mod = require(id);
+    } catch (error) {
+      throw error;
     }
+
+    return mod && mod.__esModule ? mod.default : mod;
+  }
+
+  public loadAdapter(i18n: II18n) {
+    // reset panels
+    this.panels = [];
+
+    const pkgContent = require(this.packagePath);
+    const adapterName = pkgContent.iceworks ? pkgContent.iceworks.adapter : null;
+
+    if (adapterName && DEFAULT_ADAPTER.includes(adapterName)) {
+      this.adapterName = adapterName;
+
+      const getAdapter = this.interopRequire(`../../${adapterName}`);
+      const adapters = getAdapter(i18n);
+      _.forEach(adapters, (config: IPanel, name) => {
+        const project: IProject = _.clone(this);
+        delete project.adapter;
+
+        const Module = config.module;
+        if (Module) {
+          const adapterModule = new Module({ project, storage, i18n });
+          const moduleName = name.toLowerCase();
+          this.adapter[moduleName] = adapterModule;
+        }
+
+        this.panels.push({
+          name,
+          ..._.omit(config, 'module')
+        });
+      });
+
+      // Get the panel of the current project from the cache and update the panel data according to the adapter
+      this.initPanels();
+    }
+  }
+
+  private initPanels() {
+    this.getPanels();
+    this.savePanels();
+  }
+
+  private getPanels() {
+    const panelSettings = storage.get('panelSettings');
+    const projectPanelSettings = panelSettings.find(({ projectPath }) => projectPath === this.path);
+    if (projectPanelSettings) {
+      const { panels } = projectPanelSettings;
+
+      panels.forEach(({ name: settingName, isAvailable }, index) => {
+        const panel: any = this.panels.find(({ name }) => settingName === name);
+        if (panel) {
+          panel.isAvailable = isAvailable;
+          panel.index = index;
+        }
+      });
+
+      this.panels = _.orderBy(this.panels, 'index');
+    }
+  }
+
+  private savePanels() {
+    const panelSettings = storage.get('panelSettings');
+    const projectPanelSettings = panelSettings.find(({ projectPath }) => projectPath === this.path);
+    const panels = this.panels.map(({name, isAvailable}) => ({name, isAvailable}));
+
+    if (projectPanelSettings) {
+      projectPanelSettings.panels = panels;
+    } else {
+      panelSettings.push({
+        projectPath: this.path,
+        panels,
+      });
+    }
+
+    storage.set('panelSettings', panelSettings);
+  }
+
+  public updateAdapter(i18n: II18n) {
+    this.panels = [];
+    const getAdapter = this.interopRequire(`../../${this.adapterName}`);
+    const adapters = getAdapter(i18n);
+    _.forEach(adapters, (config: IPanel, name) => {
+      this.panels.push({
+        name,
+        ..._.omit(config, 'module')
+      });
+    });
+
+    // Get the panel of the current project from the cache and update the panel data according to the adapter
+    this.initPanels();
+  }
+
+  public setPanel(params: {name: string; isAvailable: boolean; }): IPanel[] {
+    const {name, isAvailable} = params;
+    const panel = this.panels.find(({ name: settingName }) => settingName === name);
+    if (panel) {
+      panel.isAvailable = isAvailable;
+      this.savePanels();
+    }
+    return this.panels;
+  }
+
+  public sortPanels(params: { oldIndex: number; newIndex: number; }): IPanel[] {
+    const { oldIndex, newIndex } = params;
+    this.panels = arrayMove(this.panels, oldIndex, newIndex);
+    this.savePanels();
+    return this.panels;
+  }
+
+  public toJSON() {
+    const { name, path, panels, type, adapterName } = this;
+    return {
+      name,
+      adapterName,
+      path,
+      type,
+      panels,
+    };
   }
 }
 
@@ -111,16 +209,25 @@ interface ICreateParams {
 
 class ProjectManager extends EventEmitter {
   private projects;
+  private i18n: II18n;
+
+  constructor(i18n: II18n) {
+    super();
+    this.i18n = i18n;
+  }
 
   private async refresh(): Promise<Project[]> {
     return Promise.all(
       storage.get('projects').map(async (projectPath) => {
-        return new Project(projectPath);
+        const project = new Project(projectPath);
+        project.loadAdapter(this.i18n);
+        return project;
       })
     );
   }
 
   async ready() {
+    await this.i18n.readLocales();
     this.projects = await this.refresh();
   }
 
@@ -143,6 +250,9 @@ class ProjectManager extends EventEmitter {
       throw new Error('notfound project');
     }
 
+    // update adapter i18n text
+    project.updateAdapter(this.i18n);
+
     return project;
   }
 
@@ -161,7 +271,9 @@ class ProjectManager extends EventEmitter {
     const projects = storage.get('projects');
 
     if (projects.indexOf(projectPath) === -1) {
-      this.projects.push(new Project(projectPath));
+      const project = new Project(projectPath);
+      project.loadAdapter(this.i18n);
+      this.projects.push(project);
       projects.push(projectPath);
       storage.set('projects', projects);
     }
@@ -181,7 +293,7 @@ class ProjectManager extends EventEmitter {
 
     // check read and write
     try {
-      await accessAsync(targetPath, fs.constants.R_OK | fs.constants.W_OK);
+      await accessAsync(targetPath, fs.constants.R_OK | fs.constants.W_OK); // tslint:disable-line
     } catch (error) {
       error.message = '当前路径没有读写权限，请更换项目路径';
       throw error;
@@ -232,14 +344,14 @@ class ProjectManager extends EventEmitter {
       );
     }
 
-    //replace _gitignore to .gitignore
+    // replace _gitignore to .gitignore
     const gitignoreFilename = 'gitignore';
     await mvAsync(path.join(targetPath, `_${gitignoreFilename}`), path.join(targetPath, `.${gitignoreFilename}`));
   }
 
   /**
    * Create a project by scaffold
-   * 
+   *
    * TODO create a project by custom scaffold
    */
   public async createProject(params: ICreateParams): Promise<void> {
@@ -282,8 +394,8 @@ class ProjectManager extends EventEmitter {
 }
 
 export default (app) => {
-  app.projectManager = new ProjectManager();
   app.beforeStart(async () => {
+    app.projectManager = new ProjectManager(app.i18n);
     await app.projectManager.ready();
   });
 };

@@ -1,14 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { FormattedMessage } from 'react-intl';
+import { PLACEHOLDER_IMG } from '@src/appConfig';
 import styles from './index.module.scss';
 
-const BlockCard = ({ dataSource }) => {
+const BlockCard = ({ dataSource, onClick }) => {
   return (
     <div className={styles.container}>
-      <div className={styles.screenshot}>
+      <div className={styles.screenshot} onClick={onClick}>
         {dataSource.isNewly ? <div className={styles.newly}>NEW</div> : null}
-        <img alt={dataSource.title} src={dataSource.screenshot} />
+        <img alt={dataSource.title} src={dataSource.screenshot || PLACEHOLDER_IMG} />
       </div>
       <h5 className={styles.title}>{dataSource.title}</h5>
       <div className={styles.actions}>
@@ -35,16 +36,20 @@ const BlockCard = ({ dataSource }) => {
 
 BlockCard.defaultProps = {
   dataSource: {
-    isNewlyCreated: false,
+    isNewly: false,
   },
+  onClick: () => {},
 };
 
 BlockCard.propTypes = {
   dataSource: PropTypes.shape({
-    isNewlyCreated: PropTypes.bool,
     screenshot: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
+    isNewly: PropTypes.bool,
+    homepage: PropTypes.string,
+    repository: PropTypes.string,
   }),
+  onClick: PropTypes.func,
 };
 
 export default BlockCard;

@@ -4,37 +4,31 @@ import PropTypes from 'prop-types';
 import { Button } from '@alifd/next';
 import { FormattedMessage } from 'react-intl';
 import Icon from '@components/Icon';
+import TaskButton from '@components/TaskButton';
 import styles from './index.module.scss';
 
-const TaskBar = ({ loading, onStart, onStop, onSetting, extra }) => {
+const TaskBar = ({ isWorking, onStart, onStop, onSetting, extra, enableSetting }) => {
   return (
     <div className={styles.taskBar}>
       {/* Left Button Group */}
       <div className={styles.leftTaskBar}>
-        {!loading ? (
+        <TaskButton
+          isWorking={isWorking}
+          onStop={onStop}
+          onStart={onStart}
+        />
+
+        {enableSetting ? (
           <Button
-            type="primary"
+            type="secondary"
             className={styles.leftButton}
-            onClick={onStart}
+            onClick={onSetting}
+            disabled={isWorking}
           >
-            <Icon type="start" className={styles.icon} />
-            <FormattedMessage id="iceworks.task.dev.start" />
+            <Icon type="settings" className={styles.icon} />
+            <FormattedMessage id="iceworks.task.setting" />
           </Button>
-        ) : (
-          <Button type="primary" className={styles.leftButton} onClick={onStop}>
-            <Icon type="stop" className={styles.icon} />
-            <FormattedMessage id="iceworks.task.dev.stop" />
-          </Button>
-        )}
-        <Button
-          type="secondary"
-          className={styles.leftButton}
-          onClick={onSetting}
-          disabled={loading}
-        >
-          <Icon type="settings" className={styles.icon} />
-          <FormattedMessage id="iceworks.task.dev.setting" />
-        </Button>
+        ) : null}
       </div>
 
       {/* Right Button Group */}
@@ -44,19 +38,21 @@ const TaskBar = ({ loading, onStart, onStop, onSetting, extra }) => {
 };
 
 TaskBar.defaultProps = {
-  loading: false,
+  isWorking: false,
   onStart: () => {},
   onStop: () => {},
   onSetting: () => {},
   extra: null,
+  enableSetting: false,
 };
 
 TaskBar.propTypes = {
-  loading: PropTypes.bool,
+  isWorking: PropTypes.bool,
   onStart: PropTypes.func,
   onStop: PropTypes.func,
   onSetting: PropTypes.func,
   extra: PropTypes.node,
+  enableSetting: PropTypes.bool,
 };
 
 export default TaskBar;

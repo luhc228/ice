@@ -1,38 +1,23 @@
-import { IBaseModule } from './base';
+import { IBaseModule, IContext, IConfSchema } from './base';
 
 /**
  * 调试服务设置项
  */
-export interface ITaskSetting {
+export interface ITaskConf {
   /**
-   * 标签名
+   * 开发配置
    */
-  label: string;
+  dev: IConfSchema[];
 
   /**
-   * 字段名
+   * 构建配置
    */
-  name: string;
+  build: IConfSchema[];
 
   /**
-   * 描述
+   * 语法检查配置
    */
-  description: string;
-
-  /**
-   * 链接
-   */
-  link: string;
-
-  /**
-   * 展示组件名称
-   */
-  componentName: string;
-
-  /**
-   * 展示组件的 props
-   */
-  componentProps: object;
+  lint: IConfSchema[];
 }
 
 /**
@@ -42,7 +27,12 @@ export interface ITaskParam {
   /**
    * 命令名称
    */
-  command: string
+  command: string;
+
+  /**
+   * 参数对象
+   */
+  options: object;
 }
 
 export interface ITaskModule extends IBaseModule {
@@ -51,19 +41,32 @@ export interface ITaskModule extends IBaseModule {
    *
    * @param task 任务信息
    */
-  start(taskParam: ITaskParam): Promise<ITaskModule>;
+  start(taskParam: ITaskParam, ctx: IContext): Promise<ITaskModule>;
 
   /**
    * 停止调试服务
    *
    * @param task 任务信息
    */
-  stop(task: ITaskParam): Promise<ITaskModule>;
+  stop(task: ITaskParam, ctx: IContext): Promise<ITaskModule>;
 
   /**
-   * 获取启动调试服务设置项
+   * 查询调试服务运行状态
+   *
+   * @param task 任务信息
+   * @return {string} 是否运行中
+   */
+  getStatus(task: ITaskParam): string;
+
+  /**
+   * 获取任务配置项
    *
    * @param task 任务信息
    */
-  getSetting(task: ITaskParam): Promise<ITaskSetting[]>;
+  getConf(task: ITaskParam, ctx: IContext): Promise<IConfSchema[]>;
+
+  /**
+   * 设置任务配置项
+   */
+  setConf(task: ITaskParam): any;
 }

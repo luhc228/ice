@@ -1,46 +1,57 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import PropTypes from 'prop-types';
-import cx from 'classnames';
-import SubMenu from '@components/SubMenu';
 import { FormattedMessage } from 'react-intl';
-import Icon from '@components/Icon';
 import { Button } from '@alifd/next';
-import logger from '@utils/logger';
+
+import Icon from '@components/Icon';
+import SubMenu from '@components/SubMenu';
+
+import SubMenuItem from './SubMenuItem';
 import styles from './index.module.scss';
 
 const MaterialSubMenu = ({
-  data, onChange, onAddMaterial,
+  data, onChange, onAddMaterial, current, onDelete,
 }) => {
-  const [state, setState] = useState({
-    current: 0,
-  });
-
-  function handleChange(index, item) {
-    logger.debug(item);
-    setState({ current: index });
-
-    onChange(item.source);
-  }
+  const { official, custom } = data;
+  const hasCustomMaterial = custom && custom.length > 0;
 
   return (
     <SubMenu title="iceworks.material.title">
       <div className={styles.itemWrapper}>
-        {data.map((item, index) => {
-          return (
-            <div
-              className={cx(styles.subMenuItem, { [styles.active]: state.current === index })}
-              key={index}
-              onClick={() => handleChange(index, item)}
-            >
-              <div className={styles.logo}><img src={item.logo} alt={item.name} /></div>
-              <div className={styles.info}>
-                <h5 className={styles.name}>
-                  {item.name}
-                </h5>
-              </div>
+        <div style={{ marginBottom: '20px' }}>
+          <div className={styles.separator}><FormattedMessage id="iceworks.material.officialMaterial" /></div>
+          {official.map((item) => {
+            return (
+              <SubMenuItem
+                key={`official-${item.source}`}
+                current={current}
+                material={item}
+                onChange={onChange}
+                enableDelete={false}
+              />
+            );
+          })}
+        </div>
+        {
+          hasCustomMaterial ?
+            <div>
+              <div className={styles.separator}><FormattedMessage id="iceworks.material.customMaterial" /></div>
+              {custom.map((item) => {
+                return (
+                  <SubMenuItem
+                    key={`custom-${item.source}`}
+                    current={current}
+                    material={item}
+                    onChange={onChange}
+                    enableDelete
+                    onDelete={onDelete}
+                  />
+                );
+              })}
             </div>
-          );
-        })}
+          : null
+        }
       </div>
       <div className={styles.opts}>
         <Button className={styles.btn} type="primary" size="medium" onClick={onAddMaterial}>
@@ -53,13 +64,17 @@ const MaterialSubMenu = ({
 };
 
 MaterialSubMenu.defaultProps = {
+  current: '',
   onChange: f => f,
+  onDelete: f => f,
   onAddMaterial: f => f,
 };
 
 MaterialSubMenu.propTypes = {
-  data: PropTypes.array.isRequired,
+  current: PropTypes.string,
+  data: PropTypes.object.isRequired,
   onChange: PropTypes.func,
+  onDelete: PropTypes.func,
   onAddMaterial: PropTypes.func,
 };
 

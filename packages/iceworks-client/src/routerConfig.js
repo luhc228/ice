@@ -1,15 +1,11 @@
 import { lazy } from 'react';
+import * as Setting from './pages/Setting';
 
 const Project = lazy(() => import('./pages/Project'));
-const Tasks = lazy(() => import('./pages/Tasks'));
-const Task = lazy(() => import('./pages/Task'));
-const Configuration = lazy(() => import('./pages/Configuration'));
+const Engineering = lazy(() => import('./pages/Engineering'));
+const Task = lazy(() => import('./pages/Engineering/components/Task'));
+const Configuration = lazy(() => import('./pages/Engineering/components/Configuration'));
 const Material = lazy(() => import('./pages/Material'));
-const Setting = lazy(() => import('./pages/Setting'));
-const SettingGeneral = lazy(() => import('./pages/SettingGeneral'));
-const SettingMaterial = lazy(() => import('./pages/SettingMaterial'));
-const SettingPanel = lazy(() => import('./pages/SettingPanel'));
-const SettingAdvanced = lazy(() => import('./pages/SettingAdvanced'));
 
 // Then our route config
 const routerConfig = [
@@ -20,7 +16,7 @@ const routerConfig = [
   },
   {
     path: '/task',
-    component: Tasks,
+    component: Engineering,
     routes: [
       {
         from: '/task',
@@ -47,24 +43,12 @@ const routerConfig = [
   },
   {
     path: '/setting',
-    component: Setting,
+    component: Setting.Main,
     routes: [
       {
         from: '/setting',
         path: '/setting/general',
-        component: SettingGeneral,
-      },
-      {
-        path: '/setting/material',
-        component: SettingMaterial,
-      },
-      {
-        path: '/setting/panel',
-        component: SettingPanel,
-      },
-      {
-        path: '/setting/advanced',
-        component: SettingAdvanced,
+        component: Setting.General,
       },
     ],
   },

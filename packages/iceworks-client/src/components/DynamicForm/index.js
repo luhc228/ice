@@ -1,11 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Form, Input, Switch } from '@alifd/next';
+import { Form, Input, Switch, Select } from '@alifd/next';
 import styles from './index.module.scss';
 
 const components = {
   Input,
   Switch,
+  Select,
 };
 
 const FormItem = Form.Item;
@@ -21,13 +22,17 @@ const DynamicForm = ({ config, formItemLayout, onChange }) => {
   };
 
   const renderFormItems = () => {
-    return config.map((item, index) => {
+    return config && config.map((item, index) => {
       const ComponentName = components[item.componentName];
       return (
         <FormItem
           label={renderLabel(item)}
           key={index}
-          style={{ display: 'flex', alignItems: 'center' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '30px',
+          }}
         >
           <ComponentName name={item.name} {...item.componentProps} />
         </FormItem>

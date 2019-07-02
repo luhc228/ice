@@ -2,17 +2,13 @@ import io from 'socket.io-client';
 import logger from '@utils/logger';
 import appConfig from './appConfig';
 
-const socket = io(appConfig.socketUrl);
-
-socket.on('connect', () => {
-  logger.debug('socket connected!!!');
+// ref: https://socket.io/docs/client-api/#new-Manager-url-options
+const socket = io(appConfig.socketUrl, {
+  // number of reconnection attempts before giving up
+  reconnectionAttempts: 3,
 });
 
-socket.on('disconnect', () => {
-  logger.debug('socket disconnected!!!');
-});
-
-socket.on('error', (error) => {
+socket.on('error', error => {
   logger.error(error);
 });
 

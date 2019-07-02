@@ -3,30 +3,39 @@ import { Application } from 'midway';
 export default (app: Application) => {
   const { controller } = app.io;
 
-  const { project, material } = controller;
+  const { material, home } = controller;
   const logger = app.getLogger();
 
   const routers: [string, () => {}][] = [
-    ['project.index.list', project.index.list],
-    ['project.index.create', project.index.create],
-    ['project.index.delete', project.index.delete],
-    ['project.index.add', project.index.add],
-    ['project.index.current', project.index.getCurrent],
-    ['project.index.setCurrent', project.index.setCurrent],
-    ['project.page.list', project.page.list],
-    ['project.page.delete', project.page.delete],
-    ['project.page.create', project.page.create],
-    ['project.layout.list', project.layout.list],
-    ['project.dependency.list', project.dependency.list],
-    ['project.task.start', project.task.start],
-    ['project.task.stop', project.task.stop],
-    ['project.task.getSetting', project.task.getSetting],
-    ['project.dependency.reset', project.dependency.reset],
-    ['project.dependency.bulkCreate', project.dependency.bulkCreate],
-    ['project.dependency.upgrade', project.dependency.upgrade],
-    ['project.configuration.settings', project.configuration.settings],
-    ['material.index.resource', material.index.resource],
+    ['home.project.list', home.project.list],
+    ['home.project.create', home.project.create],
+    ['home.project.delete', home.project.delete],
+    ['home.project.add', home.project.add],
+    ['home.project.current', home.project.getCurrent],
+    ['home.project.setCurrent', home.project.setCurrent],
+    ['home.project.setPanel', home.project.setPanel],
+    ['home.project.sortPanels', home.project.sortPanels],
+
+    ['material.index.resources', material.index.getResources],
     ['material.index.getOne', material.index.getOne],
+    ['material.index.recommendScaffolds', material.index.getRecommendScaffolds],
+    ['material.index.add', material.index.add],
+    ['material.index.delete', material.index.delete],
+
+    ['home.setting.workFolder', home.setting.getWorkFolder],
+    ['home.setting.setWorkFolder', home.setting.setWorkFolder],
+    ['home.setting.setLocale', home.setting.setLocale],
+    ['home.setting.getLocale', home.setting.getLocale],
+    ['home.setting.setTheme', home.setting.setTheme],
+    ['home.setting.getTheme', home.setting.getTheme],
+    ['home.setting.setEditor', home.setting.setEditor],
+    ['home.setting.getEditor', home.setting.getEditor],
+
+    ['home.setting.setUser', home.setting.setUser],
+    ['home.setting.getUser', home.setting.getUser],
+    ['home.system.getPath', home.system.getPath],
+    ['home.system.openFolder', home.system.openFolder],
+    ['home.system.openEditor', home.system.openEditor],
   ];
 
   routers.forEach(([eventName, handle]) => {
@@ -38,7 +47,6 @@ export default (app: Application) => {
       try {
         this.args = params;
         const data = await handle.call(this);
-        logger.info(eventName, data);
         callback(null, data);
       } catch (error) {
         logger.error(error);

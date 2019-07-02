@@ -1,6 +1,6 @@
 {
   "name": "ice-workspace",
-  "version": "1.0.0",
+  "version": "1.0.1-0",
   "scripts": {
     "upload-oss": "node scripts/upload-oss.js",
     "generate:docs": "node ./scripts/generate-docs-database",
@@ -17,6 +17,7 @@
     }
   },
   "devDependencies": {
+    "@babel/runtime": "^7.4.5",
     "@commitlint/cli": "^7.5.2",
     "@commitlint/config-conventional": "^7.5.0",
     "ali-oss": "^6.1.0",

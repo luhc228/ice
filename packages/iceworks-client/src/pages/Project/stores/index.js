@@ -1,13 +1,19 @@
-import Icestore from 'icestore';
+import Icestore from '@ice/store';
 import pages from './pages';
-import dependencies from './dependencies';
 import layouts from './layouts';
-import page from './page';
+import menu from './menu';
+import routes from './routes';
+import git from './git';
+import oss from './oss';
+import todo from './todo';
 
 const icestore = new Icestore();
 icestore.registerStore('pages', pages);
-icestore.registerStore('dependencies', dependencies);
 icestore.registerStore('layouts', layouts);
-icestore.registerStore('page', page);
+icestore.registerStore('menu', menu);
+icestore.registerStore('routes', routes);
+icestore.registerStore('git', git);
+icestore.registerStore('oss', oss);
+icestore.registerStore('todo', todo);
 
 export default icestore;

@@ -1,40 +1,25 @@
-import { IBaseModule } from './base';
+import { IBaseModule, IConfSchema, IContext } from './base';
 
-export interface IConfigurationSettings {
+export interface IConfParam {
   /**
-   * 标签名
+   * 配置类型
    */
-  label: string;
-
-  /**
-   * 字段名
-   */
-  name: string;
+  type: string;
 
   /**
-   * 描述
+   * 参数对象
    */
-  description: string;
-
-  /**
-   * 链接
-   */
-  link: string;
-
-  /**
-   * 展示组件名称
-   */
-  componentName: string;
-
-  /**
-   * 展示组件的 props
-   */
-  componentProps: object;
+  options: object;
 }
 
 export interface IConfigurationModule extends IBaseModule {
   /**
    * 获取构建配置项
    */
-  getAll(): Promise<IConfigurationSettings[]>;
+  getCLIConf(args, ctx: IContext): Promise<IConfSchema[]>;
+
+  /**
+   * 设置构建配置项
+   */
+  setCLIConf(param: IConfParam): any;
 }

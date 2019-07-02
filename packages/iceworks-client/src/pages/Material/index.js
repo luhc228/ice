@@ -3,60 +3,123 @@ import PropTypes from 'prop-types';
 import { Tab } from '@alifd/next';
 import stores from '@stores';
 import Card from '@components/Card';
-import qs from 'querystringify';
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, injectIntl } from 'react-intl';
 import { forceCheck } from 'react-lazyload';
+import useProject from '@hooks/useProject';
+import useMaterial from '@hooks/useMaterial';
+import useDependency from '@hooks/useDependency';
+import CreateProjectModal from '@components/CreateProjectModal';
 import SubMenu from './components/SubMenu';
 import ScaffoldPanel from './components/ScaffoldPanel';
 import BlockPanel from './components/BlockPanel';
 import ComponentPanel from './components/ComponentPanel';
 import InstallModal from './components/InstallModal';
+import AddMaterialModal from './components/AddMaterialModal';
+import DeleteMaterialModal from './components/DeleteMaterialModal';
 import styles from './index.module.scss';
 
-const Material = ({ history, location }) => {
-  const material = stores.useStore('material');
+const DEFAULT_CATEGORY = '全部';
+
+const Material = ({ history, intl }) => {
+  const [material] = stores.useStores(['material']);
+  const {
+    onCreateProjectModal,
+    setCreateProjectModal,
+    onCreateProject: onOriginCreateProject,
+  } = useProject();
+  const {
+    onOpenMaterialModal,
+    setMaterialModal,
+    addMaterial,
+    addMaterialLoading,
+    deleteMaterialLoading,
+    deleteMaterial,
+    openDeleteMaterialModal,
+    onDeleteMaterialModal,
+    setDeleteMaterialModal,
+    deleteMaterialSource,
+    onInstallModal,
+    setInstallModal,
+  } = useMaterial(false, material);
+  const {
+    bulkCreate,
+  } = useDependency();
   const { dataSource } = material;
-  const currCategory = (qs.parse(location.search) || {}).category;
-
   const [type, setType] = useState('scaffolds');
-  const [visible, setVisible] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState(DEFAULT_CATEGORY);
+  const [component, setComponent] = useState({});
 
+  async function setCurrent(source) {
+    await material.setCurrentSource(source);
+    await material.getCurrentMaterial();
+  }
+
+  async function fetchData() {
+    await material.getResources();
+    const firstResource = dataSource.resource.official[0] || {};
+    const defaultActiveMaterial = firstResource.source;
+    await setCurrent(defaultActiveMaterial);
+  }
+
+  function handleCategoryChange(name = DEFAULT_CATEGORY) {
+    setCurrentCategory(name);
+  }
+
+  // it is necessary to trigger lazyLoad checking
+  // when block tabPanel enter the viewport
+  // https://github.com/twobin/react-lazyload#forcecheck
   useEffect(() => {
-    async function fetchData() {
-      await material.getResource();
-      await material.getCurrent();
-    }
-    fetchData();
-  }, []);
+    forceCheck();
+  }, [currentCategory]);
 
   async function handleTabChange(key = 'scaffolds') {
-    history.push('/material');
     setType(key);
-
-    // it is necessary to trigger lazyLoad checking
-    // when block tabPanel enter the viewport
-    if (key === 'blocks') {
-      setTimeout(() => {
-        forceCheck();
-      }, 100);
-    }
+    handleCategoryChange();
   }
+
+  // it is necessary to trigger lazyLoad checking
+  // when block tabPanel enter the viewport
+  // https://github.com/twobin/react-lazyload#forcecheck
+  useEffect(() => {
+    if (type === 'blocks') {
+      forceCheck();
+    }
+  }, [type]);
 
   async function handleMenuChange(url) {
     await handleTabChange();
-    await material.getCurrent(url);
+    await setCurrent(url);
   }
 
-  async function addMaterial() {
-    // TODO: coding...
+  async function onCreateDependency() {
+    await bulkCreate([component.source].map(({ npm, version }) =>
+      ({ package: npm, version })));
+    setInstallModal(false);
   }
 
-  async function openModal() {
-    setVisible(true);
+  async function onCreateProject(values) {
+    await onOriginCreateProject(values);
+    history.push('/project', { createdProject: true });
   }
 
-  async function closeModal() {
-    setVisible(false);
+  async function handleDeleteMaterial() {
+    await deleteMaterial(deleteMaterialSource);
+
+    // if deleted current item, go back to first item
+    if (dataSource.currentSource === deleteMaterialSource) {
+      const firstResource = dataSource.resource.official[0] || {};
+      const defaultActiveMaterial = firstResource.source;
+      await handleTabChange();
+      await setCurrent(defaultActiveMaterial);
+    }
+  }
+
+  async function handleAddMaterial({ url, name }, error) {
+    if (error && error.url) return;
+    if (error && error.name) return;
+
+    await addMaterial(url, name);
+    await handleTabChange(); // auto focus scaffolds tab
   }
 
   const tabs = [
@@ -65,9 +128,12 @@ const Material = ({ history, location }) => {
       key: 'scaffolds',
       content: (
         <ScaffoldPanel
-          dataSource={dataSource.current.scaffolds}
-          current={currCategory}
-          onDownload={openModal}
+          dataSource={dataSource.currentMaterial.scaffolds}
+          currentCategory={currentCategory}
+          onCategoryChange={handleCategoryChange}
+          onDownload={(scaffoldData) => {
+            setCreateProjectModal(true, scaffoldData);
+          }}
         />
       ),
     },
@@ -76,9 +142,9 @@ const Material = ({ history, location }) => {
       key: 'blocks',
       content: (
         <BlockPanel
-          dataSource={dataSource.current.blocks}
-          current={currCategory}
-          onInstall={openModal}
+          dataSource={dataSource.currentMaterial.blocks}
+          currentCategory={currentCategory}
+          onCategoryChange={handleCategoryChange}
         />
       ),
     },
@@ -87,26 +153,42 @@ const Material = ({ history, location }) => {
       key: 'components',
       content: (
         <ComponentPanel
-          dataSource={dataSource.current.components}
-          current={currCategory}
-          onInstall={openModal}
+          dataSource={dataSource.currentMaterial.components}
+          currentCategory={currentCategory}
+          onCategoryChange={handleCategoryChange}
+          onInstall={(componentData) => {
+            setComponent(componentData);
+            setInstallModal(true);
+          }}
         />
       ),
     },
   ];
 
+  const cardTitle = dataSource.currentMaterial.name || intl.formatMessage({ id: 'iceworks.material.title' });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   return (
     <div className={styles.materialPage}>
+      <CreateProjectModal
+        on={onCreateProjectModal}
+        onCancel={() => setCreateProjectModal(false)}
+        onOk={onCreateProject}
+      />
       {/* render material submenu */}
       <SubMenu
+        current={dataSource.currentSource}
         data={dataSource.resource}
         onChange={handleMenuChange}
-        onAddMaterial={addMaterial}
+        onAddMaterial={() => setMaterialModal(true)}
+        onDelete={openDeleteMaterialModal}
       />
-
       <div className={styles.main}>
-        <Card title={<FormattedMessage id="iceworks.material.title" />} contentHeight="100%" className="scollContainer">
-          <Tab shape="capsule" size="small" style={{ textAlign: 'center' }} activeKey={type} onChange={handleTabChange}>
+        <Card title={cardTitle} subTitle={dataSource.currentMaterial.description} contentHeight="100%" className="scollContainer">
+          <Tab shape="capsule" size="medium" style={{ textAlign: 'center' }} activeKey={type} onChange={handleTabChange}>
             {tabs.map((tab) => (
               <Tab.Item title={<FormattedMessage id={tab.tab} />} key={tab.key}>
                 {tab.content}
@@ -115,11 +197,22 @@ const Material = ({ history, location }) => {
           </Tab>
         </Card>
         <InstallModal
-          closeable
-          visible={visible}
-          type={type}
-          onCancel={closeModal}
-          onClose={closeModal}
+          on={onInstallModal}
+          onCancel={() => setInstallModal(false)}
+          onOk={onCreateDependency}
+          component={component}
+        />
+        <AddMaterialModal
+          on={onOpenMaterialModal}
+          onCancel={() => setMaterialModal(false)}
+          onSave={handleAddMaterial}
+          loading={addMaterialLoading}
+        />
+        <DeleteMaterialModal
+          on={onDeleteMaterialModal}
+          onCancel={() => setDeleteMaterialModal(false)}
+          loading={deleteMaterialLoading}
+          onOk={handleDeleteMaterial}
         />
       </div>
     </div>
@@ -128,7 +221,7 @@ const Material = ({ history, location }) => {
 
 Material.propTypes = {
   history: PropTypes.object.isRequired,
-  location: PropTypes.object.isRequired,
+  intl: PropTypes.object.isRequired,
 };
 
-export default Material;
+export default injectIntl(Material);

@@ -1,9 +1,38 @@
-import * as EventEmitter from 'events';
+export interface ISocket {
+  emit(eventName: string, data?: any): void;
+}
+
+export interface IContext {
+  socket: ISocket;
+  i18n: II18n;
+}
+
+export interface IPanel {
+  name: string;
+  title: string;
+  description?: string;
+  cover?: string;
+  isAvailable?: boolean;
+  module?: any;
+}
+
+/**
+ * 本地化插件
+ */
+export interface II18n {
+  readLocales(): Promise<void>;
+  format(localeKey: string, args?: object): string;
+}
 
 /**
  * 项目信息
  */
 export interface IProject {
+  /**
+   * 项目类型：react/vue/angular...
+   */
+  readonly type: string;
+
   /**
    * 项目显示名称
    */
@@ -15,15 +44,29 @@ export interface IProject {
   readonly path: string;
 
   /**
+   * 项目的 package 路径
+   */
+  readonly packagePath: string;
+
+  /**
    * 项目的支持的面板
    */
-  readonly panels: string[];
+  readonly panels: IPanel[];
+
+  /**
+   * 项目的适配器
+   */
+  adapter: {[name: string]: IBaseModule};
 
   /**
    * 获取项目的 package.json 信息
    */
   getPackageJSON(): any;
 
+  /**
+   * 设置项目的 package.json 信息
+   */
+  setPackageJSON(content): any;
 
   /**
    * 获取项目的环境变量信息
@@ -34,8 +77,9 @@ export interface IProject {
 /**
  * 功能模块的基类
  */
-export interface IBaseModule extends EventEmitter {
+export interface IBaseModule {
   project: IProject;
+  storage: any;
 }
 
 /**
@@ -99,10 +143,10 @@ export interface IMaterialScaffold {
   description: string;
   homepage: string;
   name: string;
-  publishTime:  string;
-  repository:  string;
-  screenshot:  string;
-  screenshots:  string[];
+  publishTime: string;
+  repository: string;
+  screenshot: string;
+  screenshots: string[];
   source: IMaterialNpmSource;
   title: string;
   updateTime: string;
@@ -118,10 +162,10 @@ export interface IMaterialComponent {
   description: string;
   homepage: string;
   name: string;
-  publishTime:  string;
-  repository:  string;
-  screenshot:  string;
-  screenshots:  string[];
+  publishTime: string;
+  repository: string;
+  screenshot: string;
+  screenshots: string[];
   source: IMaterialNpmSource;
   title: string;
   updateTime: string;
@@ -137,12 +181,12 @@ export interface IMaterialBlock {
   title: string;
   description: string;
   homepage: string;
-  categories: string[],
+  categories: string[];
   repository: string;
-  source: IMaterialNpmSource,
-  dependencies: INpmDependencies,
+  source: IMaterialNpmSource;
+  dependencies: INpmDependencies;
   screenshot: string;
-  screenshots: string[],
+  screenshots: string[];
   publishTime: string;
   updateTime: string[];
   uid: string[];
@@ -163,4 +207,36 @@ export interface INpmDependencies {
 
 export interface IMaterialCustomConfig {
   [config: string]: any;
+}
+
+export interface IConfSchema {
+  /**
+   * 标签名
+   */
+  label: string;
+
+  /**
+   * 字段名
+   */
+  name: string;
+
+  /**
+   * 描述
+   */
+  description: string;
+
+  /**
+   * 链接
+   */
+  link: string;
+
+  /**
+   * 展示组件名称
+   */
+  componentName: string;
+
+  /**
+   * 展示组件的 props
+   */
+  componentProps: object;
 }

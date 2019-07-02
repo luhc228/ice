@@ -8,7 +8,7 @@
   .list {
     flex: 1;
     .itemCurrent {
-      background-color: $background-color-base;
+      background-color: $background-color-light;
     }
     .item {
       height: 72px;
@@ -19,9 +19,17 @@
 
       .name {
         flex: 1;
+        display: flex;
+        align-items: center;
+        
         strong {
           font-size: $font-size-md;
           font-weight: 400;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          width: 180px;
+          display: inline-block;
         }
 
         .badge {
@@ -40,7 +48,6 @@
       }
 
       &:hover {
-        background-color: $background-color-light;
         .icon {
           visibility: visible;
         }
