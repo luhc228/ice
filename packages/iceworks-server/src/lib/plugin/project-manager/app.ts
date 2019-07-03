@@ -293,7 +293,7 @@ class ProjectManager extends EventEmitter {
 
     // check read and write
     try {
-      await accessAsync(targetPath, fs.constants.R_OK | fs.constants.W_OK); // tslint:disable-line
+      await accessAsync(targetPath, fs.constants.R_OK | fs.constants.W_OK);
     } catch (error) {
       error.message = '当前路径没有读写权限，请更换项目路径';
       throw error;

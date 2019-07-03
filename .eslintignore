@@ -1,6 +1,9 @@
 # 忽略目录
 build/
 node_modules/
+tests/
+test/
+demo/
 
 # node 覆盖率文件
 coverage/
@@ -28,4 +31,4 @@ packages/ice-template-builder
 packages/iceworks-scaffolder
 
 # tools
-tools/iceworks/renderer/public/
+tools/iceworks
